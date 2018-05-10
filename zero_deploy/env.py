@@ -1,4 +1,5 @@
 from plumbum import SshMachine
+import rpyc
 from rpyc.utils.zerodeploy import DeployedServer
 from rpyc.core.service import ModuleNamespace, Slave
 
@@ -104,7 +105,26 @@ def remote_print(conn, *args):
     conn.modules.sys.stdout.write(_print)
     conn.modules.sys.stdout.flush()
 
-#def using_package()
+def remote_import(conn, modules, package=None):
+    if type(modules) is not dict and type(modules) is not list:
+        modules = [modules]
+    
+    imported_modules = []
+    for module in modules:
+        if package is not None:
+            import_module = ".".join([package, module])
+        else:
+            import_module = module
+        try:
+            imported_module = conn.modules[import_module]
+        except ModuleNotFoundError:
+            _import_module = __import__(import_module)
+            rpyc.utils.classic.upload_module(conn, _import_module, import_module)
+            imported_module = conn.modules[import_module]
+        
+        imported_modules.append(imported_module)
+    
+    return imported_modules[0] if len(imported_modules) == 1 else imported_modules
 
 
 env = Env
