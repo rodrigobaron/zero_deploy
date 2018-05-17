@@ -5,6 +5,7 @@ and local machine enviroment variable.
 from plumbum import SshMachine
 import rpyc
 from rpyc.utils.zerodeploy import DeployedServer
+from rpyc.utils.classic import MockClassicConnection
 from rpyc.core.service import ModuleNamespace, Slave
 
 import yaml
@@ -16,18 +17,13 @@ class LocalMachine:
     """ Mock remote machine as local machine. Returns 'LocalEnv' when a connection are made.
     """
     def classic_connect(self):
-        return LocalEnv()
+        self.conn = MockClassicConnection()
+        return self.conn
     
     def close(self):
         pass
 
-class LocalEnv:
-    """ Use local machine as fallback if no configurations are found.
-    """
-    def __init__(self):
-        self.modules = ModuleNamespace(Slave().getmodule)
-        self.builtin = self.modules.builtins
-
+import inspect
 class Env(object):
     """ Enviroment mananger will control the actual enviroment at runtime. It load `~/.zero_deploy.yaml` configuration
     if avaliable and parse the list of configurations. Alos allow use enviroment variable `ZERO_DEPLOY_SERVERS` to
@@ -121,35 +117,27 @@ class Env(object):
 
 def remote_print(conn, *args):
     """
-    Use remote and local sys.stdout.
+    Use remote and local sys.stdout .
     """
     _print = "%s\n" % ( " ".join([str(p) for p in args]) )
     conn.modules.sys.stdout.write(_print)
     conn.modules.sys.stdout.flush()
 
-def remote_import(conn, modules, package=None):
+def upload_module(conn, module):
     """
-    Import remote module, if remote don't have the module the local module will be uploaded safely to remote.
+    Upload python module to server safely
     """
-    if type(modules) is not dict and type(modules) is not list:
-        modules = [modules]
-    
-    imported_modules = []
-    for module in modules:
-        if package is not None:
-            import_module = ".".join([package, module])
-        else:
-            import_module = module
-        try:
-            imported_module = conn.modules[import_module]
-        except ModuleNotFoundError:
-            _import_module = __import__(import_module)
-            rpyc.utils.classic.upload_module(conn, _import_module, import_module)
-            imported_module = conn.modules[import_module]
-        
-        imported_modules.append(imported_module)
-    
-    return imported_modules[0] if len(imported_modules) == 1 else imported_modules
+    _import_module = __import__(module)
+    rpyc.utils.classic.upload_module(conn, _import_module, module)
+    return conn.modules[module]
 
+def from_remote(obj):
+    """
+    Try take a remote object.
+    """
+    try:
+        return rpyc.classic.obtain(obj)
+    except:
+        return obj
 
 env = Env
