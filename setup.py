@@ -9,4 +9,11 @@ setup(
     author='Rodrigo Baron <baron.rodrigo0@gmail.com>',
     url='https://github.com/rodrigobaron/zero_deploy',
     packages=['zero_deploy'],
+    install_requires=[
+    	'plumbum',
+    	'pyyaml'
+    ],
+    dependency_links=[
+      'git+https://github.com/tomerfiliba/rpyc',
+  	]
 )
