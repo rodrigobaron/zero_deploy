@@ -1,0 +1,3 @@
+- host: 'localhost'
+  user: 'rodrigo'
+  python_executable: '/home/rodrigo/venv/bin/python'
